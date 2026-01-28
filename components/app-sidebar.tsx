@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 import {
   Sidebar,
   SidebarContent,
@@ -44,13 +45,15 @@ const userData = {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { theme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark" || theme === "dark";
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex items-center justify-start p-4">
         <Link href="/chat" className="flex items-center">
           <Image
-            src="/T logomark.png"
+            src={isDark ? "/white T.png" : "/black T.png"}
             alt="Triad Logomark"
             width={32}
             height={32}

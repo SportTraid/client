@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -13,6 +14,8 @@ export function ConditionalLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { theme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark" || theme === "dark";
   
   // Don't show sidebar on login page
   if (pathname === "/login" || pathname === "/") {
@@ -27,7 +30,7 @@ export function ConditionalLayout({
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1 flex items-center justify-center">
             <Image
-              src="/triad.png"
+              src={isDark ? "/triad-white.png" : "/triad-black.png"}
               alt="Triad Logo"
               width={120}
               height={40}
