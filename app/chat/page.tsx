@@ -123,7 +123,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col relative -m-4">
+    <div className="flex h-[calc(100vh-8rem)] flex-col -m-4">
       {messages.length === 0 ? (
         <>
           <div className="flex-1 flex items-center justify-center p-4">
@@ -174,7 +174,7 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 bg-background px-4 py-4">
+          <div className="bg-background px-4 py-4 shrink-0">
             <div className="mx-auto max-w-2xl flex gap-2">
               <Input
                 value={input}
@@ -196,64 +196,64 @@ export default function ChatPage() {
         </>
       ) : (
         <>
-          <ScrollArea className="flex-1 p-4 pb-24">
-            <div className="mx-auto max-w-3xl space-y-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex gap-4 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              {message.role === "assistant" && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>T</AvatarFallback>
-                </Avatar>
+          <ScrollArea className="flex-1 min-h-0 p-4">
+            <div className="mx-auto max-w-3xl space-y-4 pb-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex gap-4 ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {message.role === "assistant" && (
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback>T</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <Card
+                    className={`max-w-[80%] p-4 ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </Card>
+                  {message.role === "user" && (
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex gap-4 justify-start">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarFallback>T</AvatarFallback>
+                  </Avatar>
+                  <Card className="max-w-[80%] p-4 bg-muted">
+                    {currentResponse ? (
+                      <>
+                        <p className="whitespace-pre-wrap">{currentResponse}</p>
+                        <Loader2 className="h-4 w-4 animate-spin mt-2" />
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <p className="text-muted-foreground">
+                          {loadingState === "thinking" && "Thinking..."}
+                          {loadingState === "analysing" && "Analysing..."}
+                          {loadingState === "responding" && "Responding..."}
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+                </div>
               )}
-              <Card
-                className={`max-w-[80%] p-4 ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </Card>
-              {message.role === "user" && (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-              )}
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-4 justify-start">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>T</AvatarFallback>
-              </Avatar>
-              <Card className="max-w-[80%] p-4 bg-muted">
-                {currentResponse ? (
-                  <>
-                    <p className="whitespace-pre-wrap">{currentResponse}</p>
-                    <Loader2 className="h-4 w-4 animate-spin mt-2" />
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <p className="text-muted-foreground">
-                      {loadingState === "thinking" && "Thinking..."}
-                      {loadingState === "analysing" && "Analysing..."}
-                      {loadingState === "responding" && "Responding..."}
-                    </p>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
-          <div className="absolute bottom-0 left-0 right-0 bg-background px-4 py-4">
+          <div className="bg-background px-4 py-4 shrink-0">
             <div className="mx-auto max-w-3xl flex gap-2">
               <Input
                 value={input}
