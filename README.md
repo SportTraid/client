@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Triad Frontend
+
+A Next.js frontend application for the Triad sports psychology app, built with TypeScript, Tailwind CSS, and shadcn/ui.
+
+## Features
+
+- **Chat Page**: Interactive chat interface with streaming support for conversations with the sports psychology assistant
+- **Journal Page**: Create and manage journal entries with emotion tracking
+- **Nudges Page**: View personalized reminders, tips, and motivational messages
+- **Retractable Navbar**: Responsive navigation with mobile-friendly sidebar
+- **Login Page**: Clean login interface (authentication to be implemented)
+
+## Tech Stack
+
+- **Next.js 16** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - High-quality React components
+- **Lucide React** - Icon library
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ and npm
+
+### Installation
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Create a `.env.local` file in the root directory:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/fast
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+The app will redirect to `/login` by default. After "logging in" (no actual authentication yet), you'll be redirected to `/chat`.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+frontend/
+├── app/                    # Next.js app directory
+│   ├── chat/              # Chat page
+│   ├── journal/           # Journal page
+│   ├── login/              # Login page
+│   ├── nudges/            # Nudges page
+│   ├── layout.tsx         # Root layout with navbar
+│   └── page.tsx           # Home page (redirects to login)
+├── components/
+│   ├── ui/                # shadcn/ui components
+│   └── navbar.tsx         # Navigation component
+└── lib/
+    ├── api.ts             # API client utilities
+    └── utils.ts           # Utility functions
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Pages
 
-## Deploy on Vercel
+### Chat (`/chat`)
+- Send messages to the sports psychology assistant
+- View conversation history
+- Streaming response support (simulated for now)
+- Chat sessions are maintained via `chatsession_id`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Journal (`/journal`)
+- Create new journal entries with title, content, and emotion
+- View all journal entries
+- Filter by emotion type
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Nudges (`/nudges`)
+- View active reminders and tips
+- Mark nudges as complete
+- View completed nudges
+
+### Login (`/login`)
+- Simple login form (UI only, no authentication)
+- Redirects to `/chat` on submit
+
+## API Integration
+
+The frontend communicates with the backend API defined in `lib/api.ts`. The API base URL is configured via the `NEXT_PUBLIC_API_URL` environment variable.
+
+### Endpoints Used
+
+- `POST /api/chat` - Send chat messages
+- `POST /api/journal` - Create journal entries
+- `GET /api/journal/{user_id}` - Get journal entries
+
+## Development
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+### Start Production Server
+
+```bash
+npm start
+```
+
+### Linting
+
+```bash
+npm run lint
+```
+
+## Notes
+
+- Authentication is not yet implemented - the login page is UI-only
+- Chat streaming is currently simulated (chunks the response) since the backend doesn't expose streaming endpoints yet
+- User data is currently hardcoded - replace with actual user context when authentication is added
+- The backend supports chat sessions, but there's no endpoint to fetch recent sessions yet
+
+## Next Steps
+
+- Implement actual authentication
+- Add endpoint to fetch recent chat sessions
+- Implement real streaming when backend supports it
+- Add user profile/settings page
+- Add error boundaries and better error handling
+- Add loading states and skeletons
