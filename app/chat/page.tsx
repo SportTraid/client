@@ -19,6 +19,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState("");
+  const [loadingState, setLoadingState] = useState<"thinking" | "analysing" | "responding">("thinking");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [chatSessionId, setChatSessionId] = useState<string | undefined>();
 
@@ -54,8 +55,17 @@ export default function ChatPage() {
     };
     setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
+    setLoadingState("thinking");
 
     try {
+      // Simulate thinking phase
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setLoadingState("analysing");
+      
+      // Simulate analysing phase
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setLoadingState("responding");
+
       const chatRequest: ChatRequest = {
         ...userData,
         user_message: userMessage,
@@ -98,8 +108,10 @@ export default function ChatPage() {
         },
       ]);
       setCurrentResponse("");
+      setLoadingState("thinking");
     } finally {
       setIsLoading(false);
+      setLoadingState("thinking");
     }
   };
 
@@ -111,19 +123,81 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <ScrollArea className="flex-1 p-4">
-        <div className="mx-auto max-w-3xl space-y-4">
-          {messages.length === 0 && (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-semibold">Welcome to Triad Chat</h2>
-                <p className="text-muted-foreground">
-                  Start a conversation with your sports psychology assistant
+    <div className="flex h-[calc(100vh-8rem)] flex-col relative -m-4">
+      {messages.length === 0 ? (
+        <>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-semibold mb-3">Welcome to Triad</h1>
+                <p className="text-lg text-muted-foreground">
+                  Your personal sports psychology assistant is here to help you achieve your goals.
                 </p>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <Card 
+                  className="p-6 hover:bg-accent transition-colors cursor-pointer border-2 hover:border-primary/50"
+                  onClick={() => setInput("How can I improve my mental preparation before games?")}
+                >
+                  <h3 className="font-semibold mb-2">Mental Preparation</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get strategies for pre-game focus and confidence building
+                  </p>
+                </Card>
+                <Card 
+                  className="p-6 hover:bg-accent transition-colors cursor-pointer border-2 hover:border-primary/50"
+                  onClick={() => setInput("I'm feeling anxious before competitions. How can I manage this?")}
+                >
+                  <h3 className="font-semibold mb-2">Performance Anxiety</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Learn techniques to manage stress and perform under pressure
+                  </p>
+                </Card>
+                <Card 
+                  className="p-6 hover:bg-accent transition-colors cursor-pointer border-2 hover:border-primary/50"
+                  onClick={() => setInput("Help me set effective goals for my athletic performance")}
+                >
+                  <h3 className="font-semibold mb-2">Goal Setting</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Create actionable plans to reach your athletic objectives
+                  </p>
+                </Card>
+                <Card 
+                  className="p-6 hover:bg-accent transition-colors cursor-pointer border-2 hover:border-primary/50"
+                  onClick={() => setInput("How can I maintain balance and prevent burnout?")}
+                >
+                  <h3 className="font-semibold mb-2">Recovery & Balance</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Maintain mental wellness and prevent burnout
+                  </p>
+                </Card>
+              </div>
             </div>
-          )}
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-background px-4 py-4">
+            <div className="mx-auto max-w-2xl flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask me anything about sports psychology..."
+                disabled={isLoading}
+                className="flex-1 h-14 text-base"
+              />
+              <Button onClick={handleSend} disabled={isLoading || !input.trim()} size="lg" className="h-14 px-6">
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <ScrollArea className="flex-1 p-4 pb-24">
+            <div className="mx-auto max-w-3xl space-y-4">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -133,7 +207,7 @@ export default function ChatPage() {
             >
               {message.role === "assistant" && (
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>AI</AvatarFallback>
+                  <AvatarFallback>T</AvatarFallback>
                 </Avatar>
               )}
               <Card
@@ -152,39 +226,54 @@ export default function ChatPage() {
               )}
             </div>
           ))}
-          {isLoading && currentResponse && (
+          {isLoading && (
             <div className="flex gap-4 justify-start">
               <Avatar className="h-8 w-8">
-                <AvatarFallback>AI</AvatarFallback>
+                <AvatarFallback>T</AvatarFallback>
               </Avatar>
               <Card className="max-w-[80%] p-4 bg-muted">
-                <p className="whitespace-pre-wrap">{currentResponse}</p>
-                <Loader2 className="h-4 w-4 animate-spin mt-2" />
+                {currentResponse ? (
+                  <>
+                    <p className="whitespace-pre-wrap">{currentResponse}</p>
+                    <Loader2 className="h-4 w-4 animate-spin mt-2" />
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <p className="text-muted-foreground">
+                      {loadingState === "thinking" && "Thinking..."}
+                      {loadingState === "analysing" && "Analysing..."}
+                      {loadingState === "responding" && "Responding..."}
+                    </p>
+                  </div>
+                )}
               </Card>
             </div>
           )}
-          <div ref={scrollRef} />
-        </div>
-      </ScrollArea>
-      <div className="border-t p-4">
-        <div className="mx-auto max-w-3xl flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </div>
+              <div ref={scrollRef} />
+            </div>
+          </ScrollArea>
+          <div className="absolute bottom-0 left-0 right-0 bg-background px-4 py-4">
+            <div className="mx-auto max-w-3xl flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                disabled={isLoading}
+                className="flex-1 h-12 text-base"
+              />
+              <Button onClick={handleSend} disabled={isLoading || !input.trim()} className="h-12">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
