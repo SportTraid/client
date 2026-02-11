@@ -2,6 +2,61 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/fast';
 
+const AUTH_TOKEN_KEY = 'traid_access_token';
+const AUTH_USER_KEY = 'traid_user';
+
+export function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setStoredToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (token === null) localStorage.removeItem(AUTH_TOKEN_KEY);
+  else localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function getStoredUser(): UserInfo | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserInfo;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: UserInfo | null): void {
+  if (typeof window === 'undefined') return;
+  if (user === null) localStorage.removeItem(AUTH_USER_KEY);
+  else localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
+export interface UserInfo {
+  id: number;
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  gender?: string | null;
+  age?: number | null;
+  role: string;
+  organization?: string | null;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  user: UserInfo;
+}
+
 export interface ChatRequest {
   user_id: number;
   username: string;
@@ -14,6 +69,15 @@ export interface ChatRequest {
   first_name: string;
   last_name: string;
   organization: string;
+  model_name?: string;
+  temperature?: number;
+}
+
+/** Body for authenticated chat: session and request IDs required. */
+export interface ProtectedChatRequest {
+  user_message: string;
+  chatsession_id: string;
+  request_id: string;
   model_name?: string;
   temperature?: number;
 }
@@ -39,12 +103,77 @@ export interface JournalCreate {
   emotion?: string;
 }
 
+export async function signup(body: {
+  email: string;
+  password: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  gender?: string;
+  age?: number;
+  role?: string;
+  organization?: string;
+}): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail ?? 'Signup failed');
+  }
+  return response.json();
+}
+
+export async function login(body: { email: string; password: string }): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail ?? 'Login failed');
+  }
+  return response.json();
+}
+
+export interface ChatSessionItem {
+  id: string;
+  created_at: string | null;
+  preview: string;
+}
+
+export async function getChatSessions(): Promise<{ sessions: ChatSessionItem[] }> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/sessions`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Unauthorized');
+    throw new Error('Failed to fetch sessions');
+  }
+  return response.json();
+}
+
+export async function getSessionMessages(sessionId: string): Promise<{ messages: { role: string; content: string }[] }> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Unauthorized');
+    if (response.status === 404) throw new Error('Session not found');
+    throw new Error('Failed to fetch messages');
+  }
+  return response.json();
+}
+
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(request),
   });
 
@@ -71,18 +200,16 @@ export interface SendChatMessageStreamOptions {
 
 /**
  * Send a chat message and stream the plain-text response body chunk by chunk.
- * Backend returns streaming plain text (no JSON). Do not use response.json().
+ * Uses authenticated ProtectedChatRequest (chatsession_id and request_id required).
  */
 export async function sendChatMessageStream(
-  request: ChatRequest,
+  request: ProtectedChatRequest,
   onChunk: (chunk: string) => void,
   options?: SendChatMessageStreamOptions
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(request),
     signal: options?.signal,
   });

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { sendChatMessageStream, type ChatRequest } from "@/lib/api";
+import { sendChatMessageStream, getSessionMessages } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 import { Send, Loader2, Square } from "lucide-react";
 
 interface Message {
@@ -15,6 +17,11 @@ interface Message {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams.get("session");
+  const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,19 +29,43 @@ export default function ChatPage() {
   const [loadingState, setLoadingState] = useState<"thinking" | "analysing" | "responding">("thinking");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [chatSessionId] = useState<string | undefined>();
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
 
-  // Mock user data - replace with actual user data from auth later
-  const userData = {
-    user_id: 1,
-    username: "testuser",
-    role: "player",
-    age: 25,
-    gender: "male",
-    first_name: "Test",
-    last_name: "User",
-    organization: "Test Org",
-  };
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  // Set session id and load messages when session param changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (sessionParam) {
+      setChatSessionId(sessionParam);
+      setSessionLoadError(null);
+      getSessionMessages(sessionParam)
+        .then((r) => {
+          setMessages(
+            r.messages.map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }))
+          );
+        })
+        .catch(() => {
+          setSessionLoadError("Could not load conversation.");
+          setMessages([]);
+        });
+    } else {
+      setChatSessionId(crypto.randomUUID());
+      setMessages([]);
+      setSessionLoadError(null);
+    }
+  }, [sessionParam, isAuthenticated]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -42,36 +73,30 @@ export default function ChatPage() {
     }
   }, [messages, currentResponse]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isLoading || !chatSessionId) return;
 
     const userMessage = input.trim();
     setInput("");
     setCurrentResponse("");
 
-    // Add user message
-    const newUserMessage: Message = {
-      role: "user",
-      content: userMessage,
-    };
-    setMessages((prev: Message[]) => [...prev, newUserMessage]);
+    const newUserMessage: Message = { role: "user", content: userMessage };
+    setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
     setLoadingState("thinking");
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
-    const chatRequest: ChatRequest = {
-      ...userData,
-      user_message: userMessage,
-      chatsession_id: chatSessionId,
-    };
-
+    const requestId = crypto.randomUUID();
     let fullResponse = "";
 
     try {
       await sendChatMessageStream(
-        chatRequest,
+        {
+          user_message: userMessage,
+          chatsession_id: chatSessionId,
+          request_id: requestId,
+        },
         (chunk: string) => {
           fullResponse += chunk;
           setCurrentResponse(fullResponse);
@@ -80,17 +105,16 @@ export default function ChatPage() {
         { signal: controller.signal }
       );
 
-      setMessages((prev: Message[]) => [
+      setMessages((prev) => [
         ...prev,
         { role: "assistant", content: fullResponse },
       ]);
       setCurrentResponse("");
     } catch (error) {
       console.error("Error sending message:", error);
-
       const isAbort = error instanceof Error && error.name === "AbortError";
       if (isAbort) {
-        setMessages((prev: Message[]) => [
+        setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
@@ -103,11 +127,15 @@ export default function ChatPage() {
           error instanceof Error
             ? error.message
             : "Sorry, I encountered an error. Please try again.";
+        if (errorMessage.toLowerCase().includes("unauthorized")) {
+          logout();
+          router.replace("/login");
+          return;
+        }
         const isQuotaError =
           errorMessage.toLowerCase().includes("quota") ||
           errorMessage.toLowerCase().includes("429");
-
-        setMessages((prev: Message[]) => [
+        setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
@@ -123,12 +151,10 @@ export default function ChatPage() {
       setLoadingState("thinking");
       abortControllerRef.current = null;
     }
-  };
+  }, [input, isLoading, chatSessionId, loadingState, logout, router]);
 
   const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    if (abortControllerRef.current) abortControllerRef.current.abort();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -138,9 +164,20 @@ export default function ChatPage() {
     }
   };
 
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col -m-4">
-      {messages.length === 0 ? (
+      {sessionLoadError && (
+        <p className="text-sm text-destructive px-4 py-2">{sessionLoadError}</p>
+      )}
+      {messages.length === 0 && !sessionLoadError ? (
         <>
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="w-full max-w-2xl mx-auto">
@@ -219,8 +256,7 @@ export default function ChatPage() {
               {messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
+                  className={`flex gap-4 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {message.role === "assistant" && (
                     <Avatar className="h-8 w-8 shrink-0">
@@ -228,9 +264,7 @@ export default function ChatPage() {
                     </Avatar>
                   )}
                   <Card
-                    className={`max-w-[80%] p-4 ${message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                    className={`max-w-[80%] p-4 ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                       }`}
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
@@ -295,4 +329,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
