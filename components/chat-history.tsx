@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getChatSessions, type ChatSessionItem } from "@/lib/api";
@@ -9,7 +9,7 @@ import { MessageSquarePlus, Loader2, MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export function ChatHistory() {
+function ChatHistoryContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentSessionId = pathname === "/chat" ? searchParams.get("session") : null;
@@ -80,5 +80,17 @@ export function ChatHistory() {
         </ScrollArea>
       )}
     </div>
+  );
+}
+
+export function ChatHistory() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <ChatHistoryContent />
+    </Suspense>
   );
 }
