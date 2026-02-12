@@ -110,6 +110,9 @@ function ChatPageContent() {
         { role: "assistant", content: fullResponse },
       ]);
       setCurrentResponse("");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("chat-session-updated"));
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       const isAbort = error instanceof Error && error.name === "AbortError";
@@ -122,6 +125,9 @@ function ChatPageContent() {
           },
         ]);
         setCurrentResponse("");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("chat-session-updated"));
+        }
       } else {
         const errorMessage =
           error instanceof Error
