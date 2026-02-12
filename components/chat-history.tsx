@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getChatSessions, deleteChatSession, type ChatSessionItem } from "@/lib/api";
@@ -20,7 +20,7 @@ function refetchSessions(setSessions: (s: ChatSessionItem[]) => void, setLoading
     .finally(() => setLoading(false));
 }
 
-export function ChatHistory() {
+function ChatHistoryContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -127,5 +127,17 @@ export function ChatHistory() {
         </ScrollArea>
       )}
     </div>
+  );
+}
+
+export function ChatHistory() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <ChatHistoryContent />
+    </Suspense>
   );
 }
