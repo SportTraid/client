@@ -157,6 +157,18 @@ export async function getChatSessions(): Promise<{ sessions: ChatSessionItem[] }
   return response.json();
 }
 
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/chat/sessions/${encodeURIComponent(sessionId)}`,
+    { method: 'DELETE', headers: getAuthHeaders() }
+  );
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Unauthorized');
+    if (response.status === 404) throw new Error('Session not found');
+    throw new Error('Failed to delete session');
+  }
+}
+
 export async function getSessionMessages(sessionId: string): Promise<{ messages: { role: string; content: string }[] }> {
   const response = await fetch(`${API_BASE_URL}/api/chat/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: 'GET',
